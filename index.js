@@ -1,32 +1,33 @@
-/* eslint-disable no-unused-vars */
 const fastify = require('fastify')();
 
-fastify.register(require('fastify-websocket'), {
-  errorHandler(error, conn, req, reply) {
-    console.error(error);
-    conn.destroy(error);
-  },
-  options: {
-    maxPayload: 1048576,
-    verifyClient(info, next) {
-      // next(false)
-      next(true);
-    },
+const PORT = 8000;
+const users = {};
+
+fastify.register(require('fastify-cors'), {
+  origin: true,
+});
+fastify.register(require('fastify-socket.io'), {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
   },
 });
 
-fastify.get('/', { websocket: true }, (connection, req) => {
-  connection.socket.on('connection', () => {
-    connection.socket.send('hi ');
-  });
-  connection.socket.on('close', () => {
-    connection.socket.send('bye ');
-  });
+fastify.get('/', (req, res) => {
+  res.status(200).send('hello world');
 });
 
-fastify.listen(3000, (err) => {
+fastify.listen(PORT, (err) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
   }
+  console.info('fastify running on port', PORT);
+
+  fastify.io.on('connection', (socket) => {
+    socket.on('vc::auth', ({ username }) => {
+      console.log(`new user: ${username}`);
+      users[username] = socket.id;
+    });
+  });
 });
